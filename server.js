@@ -1,5 +1,6 @@
 const http = require('http');
 const httpProxy = require('http-proxy');
+const https = require('https');
 
 const proxy = httpProxy.createProxyServer({
     target: 'https://clob.polymarket.com',
@@ -9,7 +10,26 @@ const proxy = httpProxy.createProxyServer({
 });
 
 const server = http.createServer((req, res) => {
+    if (req.url === '/ping') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('pong');
+        return;
+    }
+
+    if (req.url === '/myip') {
+        https.get('https://api.ipify.org?format=json', (ipRes) => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            ipRes.pipe(res);
+        }).on('error', (e) => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        });
+        return;
+    }
+
     delete req.headers['x-forwarded-for'];
+    delete req.headers['x-forwarded-proto'];
+    delete req.headers['x-forwarded-host'];
     delete req.headers['x-real-ip'];
     delete req.headers['cf-connecting-ip'];
     delete req.headers['cf-ipcountry'];
